@@ -13,7 +13,7 @@ static class ConsoleEditor
         bool isRunning = true;
         while (isRunning)
         {
-            // Очистка консоли и отображение текста
+            // Выводим текст
             Console.Clear();
             for (int i = 0; i < lines.Count; i++)
             {
@@ -24,7 +24,7 @@ static class ConsoleEditor
             Console.SetCursorPosition(cursorX, cursorY);
 
             // Обработка ввода пользователя
-            var key = Console.ReadKey(intercept: true);
+            var key = Console.ReadKey(true);
             switch (key.Key)
             {
                 case ConsoleKey.Enter:

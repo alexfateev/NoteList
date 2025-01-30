@@ -4,7 +4,7 @@ class Note
 {
 
     public string Title { get; private set; }
-    private List<string> Text { get; set; }
+    public List<string> Text { get; set; }
     public DateTime Date { get; private set; }
     public bool IsDeleted { get; set; }
 

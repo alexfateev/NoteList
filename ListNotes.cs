@@ -1,7 +1,31 @@
 ﻿
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.Json;
+
 static class ListNotes
 {
-    static public Dictionary<string, Note> list = new Dictionary<string, Note>();
+    static public List<Note> list = new List<Note>();
+    static string filePath = "notes.json";
+
+    static public void SaveToFile()
+    {
+        // Сериализация списка в JSON
+        string json = JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true });
+        // Запись JSON в файл
+        File.WriteAllText(filePath, json);
+    }
+
+    static public List<Note> LoadFromFile()
+    {
+        // Чтение JSON из файла
+        if (File.Exists(filePath))
+        {
+            string json = File.ReadAllText(filePath);
+            // Десериализация JSON в список объектов
+            return JsonSerializer.Deserialize<List<Note>>(json);
+        }
+        return new List<Note> { };
+    }
 
     private static void ShowMainMenuText()
     {
@@ -10,6 +34,7 @@ static class ListNotes
         Console.WriteLine("2. Показать все заметки");
         Console.WriteLine("3. Поиск по заметкам");
         Console.WriteLine("4. Показать корзину");
+        Console.WriteLine("5. Выход");
         Console.Write("Выберите действие: ");
     }
 
@@ -20,7 +45,14 @@ static class ListNotes
         Console.WriteLine("--------------------------------------------------------");
         Console.WriteLine("1. Изменить имя заметки");
         Console.WriteLine("2. Редактировать заметку");
-        Console.WriteLine("3. Удалить в корзину");
+        if (note.IsDeleted)
+        {
+            Console.WriteLine("3. Вернуть из корзины");
+        }
+        else
+        {
+            Console.WriteLine("3. Удалить в корзину");
+        }
         Console.WriteLine("4. Назад...");
         Console.Write("Выберите действие: ");
     }
@@ -45,8 +77,8 @@ static class ListNotes
                         note.EditText();
                         break;
                     case 3:
-                        //Переместить в корзину
-                        note.IsDeleted = true;
+                        //Пометить как удаленную заметку
+                        note.IsDeleted = !note.IsDeleted;
                         break;
                     case 4:
                         isRunning = false;
@@ -58,7 +90,8 @@ static class ListNotes
 
     public static void MainMenu()
     {
-        while (true)
+        bool isRunning = true;
+        while (isRunning)
         {
             ShowMainMenuText();
             bool result = int.TryParse(Console.ReadLine(), out var number);
@@ -70,13 +103,17 @@ static class ListNotes
                         addNote();
                         break;
                     case 2:
-                        showList();
+                        showList(list);
                         break;
                     case 3:
-                        findNoteOrText();
+                        SearchNotes();
                         break;
                     case 4:
                         showResycle();
+                        break;
+                    case 5:
+                        isRunning = false;
+                        SaveToFile();
                         break;
                 }
             }
@@ -85,12 +122,27 @@ static class ListNotes
 
     private static void showResycle()
     {
-        throw new NotImplementedException();
+        var deletedNotes = list.Where(n => n.IsDeleted).ToList();
+
+        if (deletedNotes.Any())
+        {
+            showList(deletedNotes);
+        }
     }
 
-    private static void findNoteOrText()
+    private static void SearchNotes()
     {
-        throw new NotImplementedException();
+        Console.Write("Введите текст для поиска (по названию или содержимому): ");
+        string searchText = Console.ReadLine();
+
+        var foundNotes = list.Where(n => (n.Title.Contains(searchText) ||
+                                           n.Text.ToString().Contains(searchText)) &&
+                                          !n.IsDeleted).ToList();
+
+        if (foundNotes.Any())
+        {
+            showList(foundNotes);
+        }
     }
 
     static public void addNote()
@@ -100,16 +152,16 @@ static class ListNotes
         string result = Console.ReadLine();
         if (!string.IsNullOrEmpty(result))
         {
-            list.Add(result, new Note(result));
+            list.Add(new Note(result));
         }
     }
 
-    static public bool getValueByIndex(int index, out Note note)
+    static public bool getValueByIndex(List<Note> list, int index, out Note note)
     {
         note = null;
         if (index <= list.Count)
         {
-            note = list.ElementAtOrDefault(index - 1).Value;
+            note = list.ElementAtOrDefault(index - 1);
             return true;
         }
         else
@@ -118,14 +170,14 @@ static class ListNotes
         }
     }
 
-    static public void showList()
+    static public void showList(List<Note> list)
     {
         Console.Clear();
         int count = 0;
         foreach (var note in list)
         {
-            if (!note.Value.IsDeleted)
-                Console.WriteLine($"{++count}. {note.Key}");
+            if (!note.IsDeleted)
+                Console.WriteLine($"{++count}. {note.Title}");
         }
         Console.Write("Выберите заметку (оставьте пустым для возврата в главное меню): ");
         var result = Console.ReadLine();
@@ -134,7 +186,7 @@ static class ListNotes
             bool resultParsed = int.TryParse(result, out int parseInt);
             if (resultParsed)
             {
-                if (getValueByIndex(parseInt, out Note noteResult))
+                if (getValueByIndex(list, parseInt, out Note noteResult))
                     NoteMenu(noteResult);
                 Console.ReadKey();
             }
